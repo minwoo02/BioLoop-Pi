@@ -114,7 +114,8 @@ Feedback Control
 
 - [ ] Prepare a biosignal dataset
 - [ ] Build a PyTorch model
-- [ ] Train a signal classifier
+- [ ] Train a 1D CNN-based signal classifier
+- [ ] Evaluate the model
 - [ ] Run inference on Raspberry Pi 5
 
 ### Phase 5 - Closed-Loop Control
