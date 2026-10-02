@@ -171,3 +171,10 @@ Pico에서 전달받은 signal 데이터를 Raspberry Pi 5에서 CSV 파일로 �
 - FFT analysis
 - Feature extraction
 - Deep learning 기반 signal decoding
+
+## Development Environment
+
+현재 Raspberry Pi 5는 Mac에서 SSH를 통해 원격으로 개발하고 있다.
+
+향후 HDMI 모니터를 연결하여 Raspberry Pi OS 데스크톱 환경에서
+직접 개발 및 real-time visualization을 수행하는 방식으로 변경할 수 있다.
