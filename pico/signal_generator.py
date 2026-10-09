@@ -3,7 +3,7 @@ import random
 import time
 
 SAMPLE_RATE = 100
-SAMPLE_INTERVAL_MS = 1000
+SAMPLE_INTERVAL_MS = 1000 // SAMPLE_RATE
 
 def generate_signal(t):
     """
@@ -21,7 +21,7 @@ def generate_signal(t):
 
     burst = 0.0
 
-    if random.random() < 0.2:
+    if random.random() < 0.02:
         burst = random.uniform(0.8, 1.2)
 
     return base_signal + noise + burst
