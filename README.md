@@ -61,37 +61,43 @@ flowchart TD
 
 The initial implementation currently focuses on the communication layer between the **Pico 2 W** and **Raspberry Pi 5**.
 
+>The diagram represents the planned system architecture. The current prototype implements simulated signal generation, USB serial communication, data logging, and static visualization.
+
 ---
 
 ## Current Progress
 
 ### Raspberry Pi Pico 2 W
 
-The Pico acts as the embedded-side controller responsible for generating or acquiring signal data and transmitting it to the Raspberry Pi.
+The Pico serves as the embedded-side controller responsible for generating and transmitting simulated biosignal data.
 
-Current work includes:
+Implemented features:
 
-- Pico 2 W development environment setup
-- MicroPython execution
-- USB serial communication
+- MicroPython development environment
 - Pico-side `main.py` execution
-- initial signal/data transmission testing
+- Simulated biosignal generation
+- USB CDC serial communication
+- Timestamped signal transmission
 
 ### Raspberry Pi 5
 
-The Raspberry Pi acts as the main processing platform.
+The Raspberry Pi serves as the edge processing and data acquisition platform.
 
-Current work includes:
+Implemented features:
 
 - Raspberry Pi OS environment setup
 - SSH-based development
-- serial device connection through `/dev/ttyACM0`
-- Python serial receiver implementation
-- receiving data transmitted from the Pico
+- USB serial communication through `/dev/ttyACM0`
+- Serial data reception using PySerial
+- CSV data logging
+- Sampling rate measurement
+- Static signal visualization using Matplotlib
 
-Basic communication between the two devices has been validated.
+The current implementation supports the following pipeline:
 
-The next step is to establish a consistent signal-data format and use it for **simulated biosignal generation, logging, and real-time visualization**.
+**Signal Generation → USB Serial Transmission → CSV Data Logging → Signal Visualization**
+
+The next steps focus on sampling timing analysis, real-time visualization, and improved signal acquisition.
 
 ---
 
@@ -127,6 +133,7 @@ Possible additions include:
 - Python
 - MicroPython
 - PySerial
+- Matplotlib
 - Raspberry Pi OS
 - Git / GitHub
 
@@ -134,11 +141,10 @@ Possible additions include:
 
 - NumPy
 - SciPy
-- Matplotlib
 - Jupyter Notebook
 - PyTorch
 
-These tools will be introduced as the project progresses into signal processing and machine-learning stages.
+These tools will be introduced as the project progresses into advanced signal processing and machine-learning stages.
 
 ---
 
@@ -153,16 +159,20 @@ These tools will be introduced as the project progresses into signal processing 
 - [x] Prepare Raspberry Pi 5 development environment
 - [x] Prepare Raspberry Pi Pico 2 W development environment
 
-### Phase 1 — Pico ↔ Raspberry Pi Communication
+### Phase 1 — Communication, Logging & Visualization
 
 - [x] Connect Pico 2 W to Raspberry Pi 5
 - [x] Establish USB serial communication
 - [x] Create Pico-side execution workflow
 - [x] Create Raspberry Pi serial receiver
 - [x] Validate basic data reception
-- [ ] Define a stable signal-data format
-- [ ] Generate simulated biosignal data
-- [ ] Visualize the incoming signal in real time
+- [x] Define a stable signal-data format
+- [x] Generate simulated biosignal data
+- [x] Implement CSV data logging
+- [x] Measure actual average sampling rate
+- [x] Visualize recorded signals using Matplotlib
+- [ ] Analyze sampling rate and timing jitter
+- [ ] Implement real-time signal visualization
 
 ### Phase 2 — Signal Acquisition
 
@@ -199,6 +209,46 @@ These tools will be introduced as the project progresses into signal processing 
 - [ ] Measure end-to-end system latency
 - [ ] Evaluate closed-loop behavior
 
+## Experimental Results
+
+### Phase 1 — Simulated Biosignal Acquisition
+
+The initial BioLoop-Pi prototype successfully established USB serial communication between Raspberry Pi Pico 2 W and Raspberry Pi 5.
+
+The Pico generates a simulated biosignal containing a 2 Hz sinusoidal component, random noise, and occasional burst-like events.
+
+The Raspberry Pi receives the signal and records timestamped samples in CSV format.
+
+**Data Logging Results**
+
+| Parameter | Result |
+|---|---|
+| Target Sampling Rate | 100 Hz |
+| Measured Sampling Rate | 95.820 Hz |
+| Mean Sampling Interval | 10.436 ms |
+| Minimum Sampling Interval | 10 ms |
+| Maximum Sampling Interval | 16 ms |
+| Recorded Samples | 1,115 |
+| Sampling Rate Error | 4.18% |
+
+The measured sampling rate was approximately 4.18% lower than the target frequency.
+
+This discrepancy is likely associated with execution overhead from signal generation, USB serial transmission, and the delay-based sampling implementation.
+
+Further timing analysis and improvements are planned.
+
+### Signal Visualization
+
+The recorded signal is visualized using Python and Matplotlib.
+
+![BioLoop-Pi Simulated Biosignal](docs/images/phase1-6-signal-visualization.png)
+
+*Figure 1. Time-domain visualization of the simulated biosignal acquired through the BioLoop-Pi data logging pipeline.*
+
+### Development Logs
+
+Detailed implementation notes and experimental records are available in the [`docs/devlog`](docs/devlog/) directory.
+
 ---
 
 ## Repository Structure
@@ -207,25 +257,33 @@ These tools will be introduced as the project progresses into signal processing 
 BioLoop-Pi/
 ├── README.md
 ├── .gitignore
+│
 ├── pico/
-│   └── main.py
+│   ├── hello_pico.py
+│   └── signal_generator.py
+│
 ├── raspberry_pi/
-│   └── receiver.py
-└── docs/
-    └── devlog/
+│   ├── receiver.py
+│   ├── logger.py
+│   └── plot_signal.py
+│
+├── data/
+│   ├── raw/
+│   └── processed/
+│
+├── docs/
+│   ├── devlog/
+│   └── images/
+│       └── phase1-6-signal-visualization.png
+│
+└── notebooks/
 ```
 
-Additional directories such as `data/`, `notebooks/`, and experiment-specific folders will be added when they are actually needed.
+Raw and processed experimental data are excluded from Git tracking.
 
----
+Selected visualization results are stored in `docs/images/` for documentation purposes.
 
-## Development Log
-
-Development notes are maintained in:
-
-[`docs/devlog/`](docs/devlog/)
-
-The devlog records implementation progress, hardware setup, communication tests, problems encountered, and design decisions made during development.
+The Pico-side `signal_generator.py` is deployed as `main.py` on the Pico 2 W.
 
 ---
 
@@ -250,12 +308,23 @@ The long-term objective is to use the project as a practical engineering foundat
 
 ## Project Status
 
-**Current Stage: Phase 1 — Pico ↔ Raspberry Pi Communication**
+**Current Stage: Phase 1 — Communication, Logging & Visualization**
 
-Basic USB serial communication between the Raspberry Pi Pico 2 W and Raspberry Pi 5 has been established.
+The BioLoop-Pi prototype currently supports:
 
-**Next milestone:**
-Generate a structured simulated biosignal stream and visualize the received signal in real time on the Raspberry Pi 5.
+- Simulated biosignal generation on Raspberry Pi Pico 2 W
+- USB serial communication with Raspberry Pi 5
+- CSV data logging
+- Static signal visualization
+- Average sampling rate measurement
+
+The most recent experiment recorded 1,115 samples at an average sampling rate of approximately 95.82 Hz.
+
+**Next Milestones:**
+
+- Analyze sampling interval variability and jitter
+- Improve sampling timing accuracy
+- Implement real-time signal visualization
 
 ---
 
