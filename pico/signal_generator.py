@@ -3,7 +3,7 @@ import random
 import time
 
 SAMPLE_RATE = 100
-SAMPLE_INTERVAL_MS = 100
+SAMPLE_INTERVAL_MS = 1000
 
 def generate_signal(t):
     """
