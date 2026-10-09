@@ -226,6 +226,204 @@ CSV 저장
 - `finally`를 이용하여 Serial Port를 안전하게 닫는다.
 - `flush()`를 이용해 buffer의 데이터를 주기적으로 파일에 반영한다.
 
+---
+
+## Experiment Results — 2026-10-09
+
+### 1. 실험 목적
+
+Raspberry Pi Pico 2 W에서 생성한 simulated biosignal을
+USB Serial 통신을 통해 Raspberry Pi 5로 전송하고,
+`logger.py`를 이용하여 CSV 파일에 정상적으로 기록되는지 검증하였다.
+
+추가로 CSV에 저장된 timestamp를 이용하여
+실제 평균 sampling rate를 계산하고,
+설정한 sampling rate와 비교하였다.
+
+### 2. 실험 환경
+
+| 항목 | 구성 |
+|---|---|
+| Microcontroller | Raspberry Pi Pico 2 W |
+| Host Computer | Raspberry Pi 5 4GB |
+| Firmware | MicroPython |
+| Communication | USB CDC Serial |
+| Serial Interface | `/dev/ttyACM0` |
+| Data Logger | `raspberry_pi/logger.py` |
+| Target Sampling Rate | 100 Hz |
+| Data Format | CSV |
+| Development Environment | Mac SSH → Raspberry Pi 5 |
+
+### 3. 초기 실험에서 발견한 문제
+
+초기에는 `signal_generator.py`에서 설정한 sampling rate와
+실제 측정된 sampling rate가 일치하지 않는 문제가 발생하였다.
+
+첫 번째 실험에서는 다음과 같이 설정되어 있었다.
+
+```python
+SAMPLE_RATE = 100
+SAMPLE_INTERVAL_MS = 100
+```
+
+실제 측정 결과 평균 sampling rate는 약 9.97 Hz였다.
+
+이후 설정값을 확인하는 과정에서 다음과 같은 코드도 발견하였다.
+
+```python
+SAMPLE_RATE = 100
+SAMPLE_INTERVAL_MS = 1000
+```
+
+이 경우 실제 sampling interval은 약 1000 ms였으며,
+CSV 데이터에서도 약 1 Hz의 sampling rate가 관찰되었다.
+
+문제의 원인은 `SAMPLE_RATE` 변수와 실제 대기 시간을 결정하는
+`SAMPLE_INTERVAL_MS` 값이 일치하지 않았기 때문이었다.
+
+### 4. 문제 해결
+
+Sampling rate를 변경할 때 sampling interval도 함께 변경되도록
+다음과 같이 코드를 수정하였다.
+
+```python
+SAMPLE_RATE = 100
+SAMPLE_INTERVAL_MS = 1000 // SAMPLE_RATE
+```
+
+이렇게 하면 설정된 sampling rate를 기준으로
+sampling interval을 밀리초 단위로 계산할 수 있다.
+
+100 Hz를 설정하면 다음과 같다.
+
+$$
+T_s = \frac{1}{f_s}
+$$
+
+$$
+T_s = \frac{1}{100} = 0.01\,s = 10\,ms
+$$
+
+단, 현재 코드는 `time.sleep_ms()`를 이용하기 때문에
+반복문 내부의 연산 시간과 USB Serial 출력 시간까지 포함하면
+실제 sampling interval이 10 ms보다 길어질 수 있다.
+
+### 5. 최종 실험 결과
+
+수정된 코드를 Pico 내부 Flash Memory에 `main.py`로 저장한 후,
+Raspberry Pi에서 `logger.py`를 실행하여 데이터를 다시 수집하였다.
+
+**Recorded File**
+
+```text
+data/raw/simulated_signal_20261009_162918.csv
+```
+
+**Measurement Results**
+
+| Parameter | Target | Measured |
+|---|---:|---:|
+| Sampling Rate | 100 Hz | 95.820 Hz |
+| Sampling Interval | 10 ms | 10.436 ms |
+| Minimum Interval | 10 ms | 10 ms |
+| Maximum Interval | 10 ms | 16 ms |
+| Recorded Samples | - | 1,115 |
+| Sampling Rate Error | 0% | 4.18% |
+
+CSV 파일에는 총 1,115개의 sample이 기록되었다.
+
+### 6. 평균 Sampling Rate 계산
+
+CSV 파일에 저장된 timestamp를 이용하여
+각 sample 사이의 시간 간격을 계산하였다.
+
+$$
+\Delta t_i = t_{i+1} - t_i
+$$
+
+측정된 평균 sampling interval은 다음과 같다.
+
+$$
+\overline{\Delta t} = 10.436\,ms
+$$
+
+따라서 실제 평균 sampling rate는 다음과 같이 계산하였다.
+
+$$
+f_{s,\mathrm{avg}} = \frac{1000}{\overline{\Delta t}}
+$$
+
+$$
+f_{s,\mathrm{avg}} \approx 95.820\,Hz
+$$
+
+목표 sampling rate 대비 오차는 다음과 같다.
+
+$$
+\mathrm{Error} =
+\frac{|f_{\mathrm{target}} - f_{\mathrm{actual}}|}
+{f_{\mathrm{target}}} \times 100
+$$
+
+$$
+\mathrm{Error} =
+\frac{|100 - 95.820|}{100} \times 100
+= 4.18\%
+$$
+
+### 7. 결과 분석 및 고찰
+
+실제 측정된 평균 sampling rate는 95.820 Hz로,
+목표인 100 Hz보다 약 4.18% 낮게 나타났다.
+
+현재 신호 생성 코드는 다음 순서로 실행된다.
+
+```text
+Timestamp 측정
+        ↓
+Simulated Signal 생성
+        ↓
+USB Serial 출력
+        ↓
+sleep_ms(10)
+        ↓
+다음 반복
+```
+
+따라서 실제 sampling interval은 단순히
+`time.sleep_ms(10)`의 대기 시간만으로 결정되지 않는다.
+
+반복문 내부의 연산 및 USB Serial 출력에 필요한 시간이
+추가되기 때문에 실제 sampling rate가 목표보다 낮아질 수 있다.
+
+이번 실험에서는 최소 10 ms, 최대 16 ms의
+sampling interval이 관찰되었다.
+
+이는 시간 간격에 변동이 있음을 보여주지만,
+정확한 jitter 특성과 데이터 손실 여부는 추가 분석이 필요하다.
+
+향후에는 timer 기반 sampling 및 buffering 구조를 도입하여
+sampling interval의 정확성과 안정성을 개선할 예정이다.
+
+### 8. 결론
+
+이번 실험을 통해 다음 사항을 확인하였다.
+
+- Raspberry Pi Pico 2 W의 simulated biosignal 생성
+- USB Serial 통신을 이용한 데이터 전송
+- Raspberry Pi 5에서 CSV Data Logging
+- 총 1,115개 sample 기록
+- 실제 평균 sampling rate 95.820 Hz 측정
+- 목표 sampling rate 대비 4.18% 오차 확인
+- 코드의 sampling interval 설정 오류 발견 및 수정
+
+이를 통해 BioLoop-Pi의 기본적인
+**Signal Generation → Transmission → Data Logging**
+파이프라인이 정상적으로 동작함을 확인하였다.
+
+향후에는 sampling timing의 정확성을 개선하고,
+저장된 데이터를 시각화하여 신호의 특성을 분석할 예정이다.
+
 ## 현재 상태
 
 - [x] `logger.py` 작성
@@ -234,9 +432,13 @@ CSV 저장
 - [x] Exception handling 구조 분석
 - [x] Raspberry Pi 5에서 `logger.py` 실제 실행
 - [x] CSV 파일 생성 확인
-- [ ] 저장된 sample 확인
+- [x] 저장된 sample 확인
+- [x] Sampling interval 설정 오류 수정
+- [x] 평균 sampling rate 측정
+- [x] 목표 sampling rate와 실제 측정값 비교
 - [ ] 저장 데이터 visualization
-
+- [ ] Sampling jitter 상세 분석
+- [ ] 정확한 sampling timing 제어
 ## 다음 단계
 
 저장된 signal을 Python으로 시각화하고 분석하는 단계로 진행한다.
