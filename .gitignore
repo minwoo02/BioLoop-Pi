@@ -31,3 +31,7 @@ data/processed/
 *.pt
 *.pth
 *.onnx
+
+# Experimental datasets
+data/raw/
+data/processed/
