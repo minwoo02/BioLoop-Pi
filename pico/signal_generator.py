@@ -15,10 +15,13 @@ def generate_signal(t):
     - occasional burst-like activity
     """
 
+    # 2 Hz sine wave
     base_signal = 0.2 * math.sin(2 * math.pi * 2 * t)
 
+    #Random noise
     noise = random.uniform(-0.05, 0.05)
 
+    #Random burst-like event
     burst = 0.0
 
     if random.random() < 0.02:
@@ -26,26 +29,56 @@ def generate_signal(t):
 
     return base_signal + noise + burst
 
-print("BioLoop-Pi simulated biosignal generator started.")
-print("timestamp_ms, signal")
 
-start_time = time.ticks_ms()
+def main():
+    print("BioLoop-Pi signal generator started.")
+    print("timestamp_ms,signal")
 
-while True:
-    current_time = time.ticks_ms()
+    start_time = time.ticks_ms()
+    next_sample_time = start_time
 
-    elapsed_ms = time.ticks_diff(
-        current_time,
-        start_time
-    )
+    while True:
+        # Remaining time until the next sample
+        remaining_ms = time.ticks_diff(
+            next_sample_time,
+            time.ticks_ms()
+        )
 
-    t = elapsed_ms / 1000.0
+        # Wait only until the scheduled time
+        if remaining_ms > 0:
+            time.sleep_ms(remaining_ms)
 
-    signal = generate_signal(t)
+        # Record actual sampling timestamp
+        current_time = time.ticks_ms()
 
-    print("{},{}".format(
-        elapsed_ms,
-        signal
-    ))
+        elapsed_ms = time.ticks_diff(
+            current_time,
+            start_time
+        )
 
-    time.sleep_ms(SAMPLE_INTERVAL_MS)
+        t = elapsed_ms / 1000.0
+
+        # Generate and transmit sample
+        signal = generate_signal(t)
+
+        print("{},{}".format(elapsed_ms, signal))
+
+        # Schedule the next sample
+        next_sample_time = time.ticks_add(
+            next_sample_time,
+            SAMPLE_INTERVAL_MS
+        )
+
+        # Avoid immediate catch-up bursts if late
+        if time.ticks_diff(
+            next_sample_time,
+            time.ticks_ms()
+        ) <= 0:
+            next_sample_time = time.ticks_add(
+                time.ticks_ms(),
+                SAMPLE_INTERVAL_MS
+            )
+
+
+if __name__ == "__main__":
+    main()
