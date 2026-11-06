@@ -62,11 +62,13 @@ def main():
                 ).strip()
 
                 try:
-                    timestamp_ms, signal = raw.split(",")
+                    # Parse sequence, timestamp, and signal
+                    seq_str, timestamp_str, signal_str = raw.split(",")
 
-                    timestamp_ms = int(timestamp_ms)
-                    signal = float(signal)
-
+                    sequence = int(seq_str)
+                    timestamp_ms = int(timestamp_str)
+                    signal = float(signal_str)
+                    
                 except ValueError:
                     continue
 

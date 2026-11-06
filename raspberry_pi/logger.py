@@ -1,27 +1,26 @@
-import csv
-import os
-from datetime import datetime
-
 import serial
+import csv
+from datetime import datetime
+from pathlib import Path
 
 
 SERIAL_PORT = "/dev/ttyACM0"
 BAUD_RATE = 115200
 
-DATA_DIR = "data/raw"
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_DIR / "data" / "raw"
 
 
 def main():
     # data/raw 폴더가 없으면 자동 생성
-    os.makedirs(DATA_DIR, exist_ok=True)
+    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 
-    # 기록 시작 시간을 파일명에 사용
-    start_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    file_path = os.path.join(
-        DATA_DIR,
-        f"simulated_signal_{start_time}.csv"
+    filename = (
+        "simulated_signal_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".csv"
     )
+
+    file_path = DATA_DIR / filename
+    sample_count = 0
 
     # Pico와 Serial 연결
     ser = serial.Serial(
@@ -29,8 +28,6 @@ def main():
         BAUD_RATE,
         timeout=1
     )
-
-    sample_count = 0
 
     print("BioLoop-Pi data logger started.")
     print(f"Listening on {SERIAL_PORT}")
@@ -43,6 +40,7 @@ def main():
 
             # CSV header
             writer.writerow([
+                "seq",
                 "timestamp_ms",
                 "signal"
             ])
@@ -57,12 +55,17 @@ def main():
                     continue
 
                 try:
-                    timestamp_ms, signal = raw_data.split(",")
+                    # Parse three fields
+                    seq, timestamp_ms, signal = raw_data.split(",")
 
+                    # Convert to numeric types
+                    seq = int(seq)
                     timestamp_ms = int(timestamp_ms)
                     signal = float(signal)
 
+                    # Save received sample
                     writer.writerow([
+                        seq,
                         timestamp_ms,
                         signal
                     ])

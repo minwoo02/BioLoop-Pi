@@ -6,15 +6,6 @@ SAMPLE_RATE = 100
 SAMPLE_INTERVAL_MS = 1000 // SAMPLE_RATE
 
 def generate_signal(t):
-    """
-    Generate a simple simulated biosignal.
-
-    Componets:
-    - 2 Hz base waveform
-    - random noise
-    - occasional burst-like activity
-    """
-
     # 2 Hz sine wave
     base_signal = 0.2 * math.sin(2 * math.pi * 2 * t)
 
@@ -32,10 +23,13 @@ def generate_signal(t):
 
 def main():
     print("BioLoop-Pi signal generator started.")
-    print("timestamp_ms,signal")
+    print("seq,timestamp_ms,signal")
 
     start_time = time.ticks_ms()
     next_sample_time = start_time
+    
+    # Sample sequence number
+    sequence = 0
 
     while True:
         # Remaining time until the next sample
@@ -61,7 +55,11 @@ def main():
         # Generate and transmit sample
         signal = generate_signal(t)
 
-        print("{},{}".format(elapsed_ms, signal))
+        # Transmit squence number, timestamp, and signal
+        print("{},{},{}".format(sequence, elapsed_ms, signal))
+
+        #Increment sequence number
+        sequence += 1
 
         # Schedule the next sample
         next_sample_time = time.ticks_add(
